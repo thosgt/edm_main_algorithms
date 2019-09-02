@@ -1,3 +1,3 @@
 # edm_main_algorithms
 
-I love :coffee:
+I love :coffee: and :cat:
