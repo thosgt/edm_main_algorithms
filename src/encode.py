@@ -4,27 +4,34 @@ FEATURES_DEFAULT = ('lesson_id', 'exercise_code', 'learning_object', 'exercise_c
 TIME_WINDOWS_DEFAULT = ('60s', '1h', '1d', '5d', '30d', '365d')
 COUNTERS_DEFAULT = ('attempts', 'wins')
 
-def encode_df(df, feature_cumcount=[]):
+def encode_df(df, features=FEATURES_DEFAULT, counters = COUNTERS_DEFAULT, time_windows=TIME_WINDOWS_DEFAULT):
     '''
-    Encodes the wins and fails cumulative counts in the given time windows and dummifies the categorical variables of the dataset.
+    Get the wanted counters of each student and dummifies the categorical variables of the dataset.
     '''
-    for feature in FEATURES_DEFAULT:
-        df = add_feature_attempts_and_wins(df, feature)
+    df = add_counters_for_all_features(df, features, counters, time_windows)
     df = pd.get_dummies(df, columns=['student_id', 'lesson_id', 'exercise_code', 'learning_object', 'exercise_code_level'])
     return df
 
-def add_feature_attempts_and_wins(df, feature, time_windows=TIME_WINDOWS_DEFAULT, counters = COUNTERS_DEFAULT):
+def add_counters_for_all_features(df, features, counters, time_windows):
     '''
-    For a given feature, adds a column with the number of past attempts and wins of a student in all given time windows
+    Adds a column for all given features, all given counters of a student and all given time windows.
+    '''
+    for feature in features:
+        df = add_feature_counters(df, feature, counters, time_windows)
+    return df
+
+def add_feature_counters(df, feature, counters, time_windows):
+    '''
+    For a given feature, adds a column for all given counters of a student and for all given time windows.
     '''
     for time_window in time_windows:
         for counter in counters:
-            df = add_feature_past_counter_in_tw(df, counter, feature, time_window)
+            df = add_feature_past_counter_in_time_window(df, feature, counter, time_window)
     return df
 
-def add_feature_past_counter_in_tw(df, counter, feature, time_window):
+def add_feature_past_counter_in_time_window(df, feature, counter, time_window):
     '''
-    For a given feature, adds a column with the number of past attempts of a student in the specified time_window
+    For a given feature, adds a column with the given counter of a student in the specified time_window
     Possible counters :
     - wins
     - attempts
@@ -39,7 +46,7 @@ def add_feature_past_counter_in_tw(df, counter, feature, time_window):
     if counter == "wins":
         counter_in_the_time_window = counter_in_the_time_window.sum()
     sorted_counter = counter_in_the_time_window.reset_index().fillna(0).sort_values(by=['timestamp', 'correctness'])
-    df_copy[feature + '_' + counter + '_in_the_past_' + str(time_window)] = sorted_counter['correctness'].values
+    df_copy[f'{feature}_{counter}_in_the_past_{str(time_window)}'] = sorted_counter['correctness'].values
     return df_copy.reset_index()
 
 # TODO add tests
