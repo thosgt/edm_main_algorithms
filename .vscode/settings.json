@@ -1,0 +1,9 @@
+{
+    "python.pythonPath": "/Users/tho_sergent/.local/share/virtualenvs/edm_main_algorithms-MrmaA6op/bin/python",
+    "python.testing.pytestArgs": [
+        "src"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.nosetestsEnabled": false,
+    "python.testing.pytestEnabled": true
+}
