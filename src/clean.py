@@ -22,6 +22,4 @@ def add_exercise_code_level(df):
 def change_date_to_timestamp(df):
     df["timestamp"] = df["created_at"]
     df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["timestamp"] = df["timestamp"] - df["timestamp"].min()
-    df["timestamp"] = df["timestamp"].apply(lambda x: x.total_seconds()).astype(np.int64)
     return df
