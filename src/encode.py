@@ -4,7 +4,7 @@ FEATURES_DEFAULT = ('lesson_id', 'exercise_code', 'learning_object', 'exercise_c
 TIME_WINDOWS_DEFAULT = ('60s', '1h', '1d', '5d', '30d', '365d')
 COUNTERS_DEFAULT = ('attempts', 'wins')
 
-def encode_df(df: pd.DataFrame, features: tuple=FEATURES_DEFAULT, counters: tuple=COUNTERS_DEFAULT, time_windows: tuple=TIME_WINDOWS_DEFAULT):
+def encode_df(df: pd.DataFrame, features: tuple=FEATURES_DEFAULT, counters: tuple=COUNTERS_DEFAULT, time_windows: tuple=TIME_WINDOWS_DEFAULT)-> pd.DataFrame:
     '''
     Get the wanted counters of each student and dummifies the categorical variables of the dataset.
     '''
@@ -12,15 +12,15 @@ def encode_df(df: pd.DataFrame, features: tuple=FEATURES_DEFAULT, counters: tupl
     df = pd.get_dummies(df, columns=['student_id', 'lesson_id', 'exercise_code', 'learning_object', 'exercise_code_level'])
     return df
 
-def add_counters_for_all_features(df: pd.DataFrame, features: tuple, counters: tuple, time_windows: tuple):
+def add_counters_for_all_features(df: pd.DataFrame, features: tuple, counters: tuple, time_windows: tuple)-> pd.DataFrame:
     '''
     Adds a column for all given features, all given counters of a student and all given time windows.
     '''
     for feature in features:
-        df = add_feature_counters_in_all_time_windows(df, feature, counters, time_windows)
+        df = add_feature_counters_for_each_time_window(df, feature, counters, time_windows)
     return df
 
-def add_feature_counters_in_all_time_windows(df: pd.DataFrame, feature: str, counters: tuple, time_windows: tuple):
+def add_feature_counters_for_each_time_window(df: pd.DataFrame, feature: str, counters: tuple, time_windows: tuple)-> pd.DataFrame:
     '''
     For a given feature, adds a column for all given counters of a student and for all given time windows.
     '''
@@ -28,7 +28,7 @@ def add_feature_counters_in_all_time_windows(df: pd.DataFrame, feature: str, cou
         df = add_feature_counters_in_one_time_window(df, feature, counters, time_window)
     return df
 
-def add_feature_counters_in_one_time_window(df: pd.DataFrame, feature: str, counters: tuple, time_window: str):
+def add_feature_counters_in_one_time_window(df: pd.DataFrame, feature: str, counters: tuple, time_window: str)-> pd.DataFrame:
     '''
     For a given feature, adds a column for all given counters of a student and for one given time window.
     '''
@@ -36,7 +36,7 @@ def add_feature_counters_in_one_time_window(df: pd.DataFrame, feature: str, coun
         df = add_one_feature_counter_in_one_time_window(df, feature, counter, time_window)
     return df
 
-def add_one_feature_counter_in_one_time_window(df: pd.DataFrame, feature: str, counter: str, time_window: str):
+def add_one_feature_counter_in_one_time_window(df: pd.DataFrame, feature: str, counter: str, time_window: str)-> pd.DataFrame:
     '''
     For a given feature, adds a column with the given counter of a student in the specified time window.
     Possible counters :
