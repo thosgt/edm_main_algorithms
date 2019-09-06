@@ -1,4 +1,5 @@
 import pandas as pd
+from tqdm import tqdm
 
 FEATURES_DEFAULT = ('lesson_id', 'exercise_code', 'learning_object', 'exercise_code_level')
 TIME_WINDOWS_DEFAULT = ('60s', '1h', '1d', '5d', '30d', '365d')
@@ -16,7 +17,8 @@ def add_counters_for_all_features(df: pd.DataFrame, features: tuple, counters: t
     '''
     Adds a column for all given features, all given counters of a student and all given time windows.
     '''
-    for feature in features:
+    # print(f'Adding the counters for {len(features)} features')
+    for feature in tqdm(features, desc=f'Adding the counters for {len(features)} features'):
         df = add_feature_counters_for_each_time_window(df, feature, counters, time_windows)
     return df
 
@@ -24,7 +26,8 @@ def add_feature_counters_for_each_time_window(df: pd.DataFrame, feature: str, co
     '''
     For a given feature, adds a column for all given counters of a student and for all given time windows.
     '''
-    for time_window in time_windows:
+    # print(f'Adding the counters for the time windows of {feature}')
+    for time_window in tqdm(time_windows, desc=f'Adding the counters for the time windows of {feature}'):
         df = add_feature_counters_in_one_time_window(df, feature, counters, time_window)
     return df
 
