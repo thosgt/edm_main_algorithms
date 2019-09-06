@@ -11,6 +11,7 @@ autopep8 = "*"
 [packages]
 pandas = "*"
 pytest = "<=5.0.1"
+tqdm = "*"
 
 [requires]
 python_version = "3.7"
