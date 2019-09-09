@@ -14,28 +14,31 @@ It is a model of student learning where there are 5 kinds of parameters to learn
   - &theta;<sub>wins, exercise, time-window </sub> (>0) : speed with which a student learns (?) a given type of exercise in a given time window
   - &theta;<sub>attempts, exercise, time-window</sub> (>0) : speed with which a student forgets (?) a given type of exercise in a given time window
 
-Actually these parameters are those of a LogisticRegression on a dataset looking like (parameters are in parenthesis):
+Let's say we have a dataset looking like this.
+#### Original dataset
+| trace_id | date | student_id | exercise_id | correctness |
+|:-:|:-:|:-:|:-:|:-:|
+| 1 | 1 january | 1 | 1 | 1 |
+| 2 | 1 january | 1 | 1 | 0 |
+| 3 | 1 january | 1 | 1 | 0 |
+| 4 | 1 january | 2 | 1 | 0 |
+| 5 | 1 january | 2 | 1 | 1 |
+| 6 | **3 january** | 2 | 1 | 1 |
+
+Then the parameters previously mentionned are those of a LogisticRegression on a dataset looking like (parameters are in parenthesis):
 
 #### Encoded dataset
-| student_1 (&alpha;<sub>1</sub>)| student (&alpha;<sub>2</sub>)| exercise_1 (&delta;<sub>1</sub>) | exercise_2 (&delta;<sub>2</sub>)| wins_on_exo_1_in_the_past_day (&theta;<sub>wins, exo_1, one-day</sub>)| attempts_on_exo_1_in_the_past_day (&theta;<sub>attempts, exo_1, one-day</sub>) | wins_on_exo_1_in_the_past_week (&theta;<sub>wins, exo_1, one-week</sub>)| attempts_on_exo_1_in_the_past_week (&theta;<sub>attempts, exo_1, one-week</sub>)| etc. | 
-|:-:|:-----:|:-----:|:------:|:----:|:----:|:-:|:-:|:-:|
-| 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
-| 0 | 1 | 1 | 0 | 1 | 1 | 1 | 1 |
-| 0 | 1 | 1 | 0 | 1 | 2 | 1 | 2 |
-| 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
-| 1 | 0 | 1 | 0 | 0 | 1 | 0 | 1 |
-| 1 | 0 | 1 | 0 | 0 | 0 | 1 | 2 |
+| trace_id | student_1 (&alpha;<sub>1</sub>)| student (&alpha;<sub>2</sub>)| exercise_1 (&delta;<sub>1</sub>) | exercise_2 (&delta;<sub>2</sub>)| wins_on_exo_1_in_the_past_day (&theta;<sub>wins, exo_1, one-day</sub>)| attempts_on_exo_1_in_the_past_day (&theta;<sub>attempts, exo_1, one-day</sub>) | wins_on_exo_1_in_the_past_week (&theta;<sub>wins, exo_1, one-week</sub>)| attempts_on_exo_1_in_the_past_week (&theta;<sub>attempts, exo_1, one-week</sub>)| etc. | 
+|:-:|:-:|:-----:|:-----:|:------:|:----:|:----:|:-:|:-:|:-:|
+| 1 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 2 | 0 | 1 | 1 | 0 | 1 | 1 | 1 | 1 |
+| 3 | 0 | 1 | 1 | 0 | 1 | 2 | 1 | 2 |
+| 4 | 1 | 0 | 1 | 0 | 0 | 0 | 0 | 0 |
+| 5 | 1 | 0 | 1 | 0 | 0 | 1 | 0 | 1 |
+| 6 | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 2 |
 
 To get this encoded dataset, the original dataset should look like.
-#### Original dataset
-| date | student_id | exercise_id | correctness |
-|:-:|:-:|:-:|:-:|
-| 1 january | 1 | 1 | 1 |
-| 1 january | 1 | 1 | 0 |
-| 1 january | 1 | 1 | 0 |
-| 1 january | 2 | 1 | 0 |
-| 1 january | 2 | 1 | 1 |
-| **3 january** | 2 | 1 | 1 |
+
 
 We then one-hot-encode on the student_id and exercise_id and add the number of previous attempts and wins that a student had in the given time windows. Write on a piece of paper what you get doing that and compare to the encoded dataset above.
 
