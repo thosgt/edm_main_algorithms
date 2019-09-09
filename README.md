@@ -8,16 +8,16 @@ It also uses the pandas library more (like the rolling function) to create the f
 
 ### What is DAS3H ?
 It is a model of student learning where there are 5 kinds of parameters to learn (same notations as in the article):
-  - $\alpha$ : level of a student
-  - $\delta$ : difficulty of an exercise
-  - $\beta$ : difficulty of a knowledge component (not used in our implementation as we haven't tagged exercises with KCs yet)
-  - $\theta_{wins,\ exercise,\ time_window}$ (>0) : speed with which a student learns (?) a given type of exercise in a given time window
-  - $\theta_{attempts,\ exercise,\ time_window}$ (>0) : speed with which a student forgets (?) a given type of exercise in a given time window
+  - &alpha; : level of a student
+  - &delta; : difficulty of an exercise
+  - &beta; : difficulty of a knowledge component (not used in our implementation as we haven't tagged exercises with KCs yet)
+  - &theta;<sub>wins, exercise, time-window </sub> (>0) : speed with which a student learns (?) a given type of exercise in a given time window
+  - &theta;<sub>attempts, exercise, time-window</sub> (>0) : speed with which a student forgets (?) a given type of exercise in a given time window
 
 Actually these parameters are those of a LogisticRegression on a dataset looking like (parameters are in parenthesis):
 
 #### Encoded dataset
-| student_1 ($\alpha_1$)| student_2 ($\alpha_2$)| exercise_1 ($\delta_1$) | exercise_2 ($\delta_2$)| wins_on_exo_1_in_the_past_day ($\theta_{wins,\ exo_1,\ one-day}$)| attempts_on_exo_1_in_the_past_day ($\theta_{attempts,\ exo_1,\ one-day}$) | wins_on_exo_1_in_the_past_week ($\theta_{wins,\ exo_1,\ one-week}$)| attempts_on_exo_1_in_the_past_week ($\theta_{wins,\ exercise,\ one-week}$)| etc. | 
+| student_1 (&alpha;<sub>1</sub>)| student (&alpha;<sub>2</sub>)| exercise_1 (&delta;<sub>1</sub>) | exercise_2 (&delta;<sub>2</sub>)| wins_on_exo_1_in_the_past_day (&theta;<sub>wins, exo_1, one-day</sub>)| attempts_on_exo_1_in_the_past_day (&theta;<sub>attempts, exo_1, one-day</sub>) | wins_on_exo_1_in_the_past_week (&theta;<sub>wins, exo_1, one-week</sub>)| attempts_on_exo_1_in_the_past_week (&theta;<sub>attempts, exo_1, one-week</sub>)| etc. | 
 |:-:|:-----:|:-----:|:------:|:----:|:----:|:-:|:-:|:-:|
 | 0 | 1 | 1 | 0 | 0 | 0 | 0 | 0 |
 | 0 | 1 | 1 | 0 | 1 | 1 | 1 | 1 |
@@ -43,4 +43,8 @@ We then one-hot-encode on the student_id and exercise_id and add the number of p
 As you may have noticed, the features in the *encoded* dataset seem to "lag" one trace behind the original dataset. Actually this is done to prevent any data leakage and not use the answer at time T to predict itself. If this is not clear, please tell me.
 
 *Note :*
-Actually the number of wins and number of attempts are not fed directly to the model, instead they go through a scaling function ($x \to log(1+x)$ in the article)
+Actually the number of wins and number of attempts are not fed directly to the model, instead they go through a scaling function :
+``` python
+lambda x: log(1 + x)
+```
+in the article
