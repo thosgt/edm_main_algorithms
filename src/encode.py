@@ -1,4 +1,6 @@
 import pandas as pd
+import numpy as np
+
 from tqdm import tqdm
 
 FEATURES_DEFAULT = ('lesson_id', 'exercise_code', 'learning_object', 'exercise_code_level')
@@ -54,5 +56,9 @@ def add_one_feature_counter_in_one_time_window(df: pd.DataFrame, feature: str, c
     elif counter == "wins":
         counter_in_the_time_window = counter_in_the_time_window.sum()
     sorted_counter = counter_in_the_time_window.reset_index().fillna(0).sort_values(by=['timestamp', 'correctness'])
-    df_copy[f'{feature}_{counter}_in_the_past_{str(time_window)}'] = sorted_counter['correctness'].values
+    df_copy[f'{feature}_{counter}_in_the_past_{str(time_window)}'] = sorted_counter['correctness'].apply(scaling_function).values
     return df_copy.reset_index()
+
+def scaling_function(x, type='log'):
+    if type == 'log':
+        return np.log(1 + x)
