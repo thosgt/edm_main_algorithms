@@ -12,6 +12,8 @@ def clean_df(df, exercise_code_level=True, drop_level=True, date_to_timestamp=Tr
         df = change_date_to_timestamp(df)
         df = df.drop(columns=['created_at'])
     df["student_id"] = np.unique(df["student_id"], return_inverse=True)[1]
+    df = df[df['correctness'].isin((True, False))]
+    df['correctness'] = df['correctness'].astype(int)
     return df
 
 def add_exercise_code_level(df)-> pd.DataFrame:
