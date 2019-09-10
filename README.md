@@ -25,7 +25,7 @@ Let's say we have a dataset looking like this.
 | 5 | 1 january | 2 | 1 | 1 |
 | 6 | **3 january** | 2 | 1 | 1 |
 
-Then the parameters previously mentionned are those of a LogisticRegression on a dataset looking like (parameters are in parenthesis):
+In the simplest version of the model (not using Factorisation Machines), the parameters to compute are those of a LogisticRegression on a dataset looking like this :
 
 #### Encoded dataset
 | trace_id | student_1 (&alpha;<sub>1</sub>)| student (&alpha;<sub>2</sub>)| exercise_1 (&delta;<sub>1</sub>) | exercise_2 (&delta;<sub>2</sub>)| wins_on_exo_1_in_the_past_day (&theta;<sub>wins, exo_1, one-day</sub>)| attempts_on_exo_1_in_the_past_day (&theta;<sub>attempts, exo_1, one-day</sub>) | wins_on_exo_1_in_the_past_week (&theta;<sub>wins, exo_1, one-week</sub>)| attempts_on_exo_1_in_the_past_week (&theta;<sub>attempts, exo_1, one-week</sub>)| other columns like &theta; parameters on ex 2 | 
@@ -37,7 +37,15 @@ Then the parameters previously mentionned are those of a LogisticRegression on a
 | 5 | 1 | 0 | 1 | 0 | 0 | 1 | 0 | 1 |
 | 6 | 1 | 0 | 1 | 0 | 0 | 0 | 1 | 2 |
 
-To get this encoded dataset, we one-hot-encode on the student_id and exercise_id and add the number of previous attempts and wins that a student had in the given time windows. Write on a piece of paper what you get doing that and compare to the encoded dataset above.
+To get this encoded dataset, we one-hot-encode on the student_id and exercise_id and add the number of previous attempts and wins that a student had in the given time windows. 
+
+Try to write on a piece of paper what you get doing that and compare to the encoded dataset above. See the *Important* note for further details.
+
+#### Logistic Regression
+
+As stated in [sklearn documentation](https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression), Logistic Regression is the optimization of <a href="https://www.codecogs.com/eqnedit.php?latex=\min_{w,&space;c}&space;\frac{1}{2}w^T&space;w&space;&plus;&space;C&space;\sum_{i=1}^n&space;\log(\exp(-&space;y_i&space;(X_i^T&space;w&space;&plus;&space;c))&space;&plus;&space;1)&space;." target="_blank"><img src="https://latex.codecogs.com/gif.latex?\min_{w,&space;c}&space;\frac{1}{2}w^T&space;w&space;&plus;&space;C&space;\sum_{i=1}^n&space;\log(\exp(-&space;y_i&space;(X_i^T&space;w&space;&plus;&space;c))&space;&plus;&space;1)&space;." title="\min_{w, c} \frac{1}{2}w^T w + C \sum_{i=1}^n \log(\exp(- y_i (X_i^T w + c)) + 1) ." /></a>
+
+Here, the parameters &alpha;, &delta;, &beta;, and &theta; are concatenated in *w*
 
 *Important :*
 As you may have noticed, the features in the *encoded* dataset seem to "lag" one trace behind the original dataset. Actually this is done to prevent any data leakage and not use the answer at time T to predict itself. If this is not clear, please tell me.
