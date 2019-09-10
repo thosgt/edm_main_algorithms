@@ -12,6 +12,8 @@ autopep8 = "*"
 pandas = "*"
 pytest = "<=5.0.1"
 tqdm = "*"
+sklearn = "*"
+numpy = "*"
 
 [requires]
 python_version = "3.7"
