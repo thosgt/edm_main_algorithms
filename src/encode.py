@@ -20,23 +20,31 @@ def encode_df(
     """
     if exercises is None:
         exercises = set(df["exercise_code"].unique())
-        # exercises done by only one student must be removed
+    # exercises done by only one student must be removed
+    exercises_to_keep = remove_exercises_done_by_only_one_student(df, exercises)
+    df = add_counters_for_all_exercises(df, exercises_to_keep, counters, time_windows).fillna(0)
+    df = pd.get_dummies(
+        df, columns=["student_id", "exercise_code_level_lesson", "exercise_code"]
+    )
+    return df
+
+def remove_exercises_done_by_only_one_student(df, exercises):
+    '''
+    Groupby function is not working with them for now
+    '''
     nb_student_by_exo = (
         df[["student_id", "exercise_code"]]
         .drop_duplicates()
         .groupby("exercise_code", as_index=False)
         .count()
     )
+    exercises_to_keep = exercises
     exercises_to_remove = nb_student_by_exo[nb_student_by_exo["student_id"] == 1][
         "exercise_code"
     ].values
     for exercise in exercises_to_remove:
-        exercises.remove(exercise)
-    df = add_counters_for_all_exercises(df, exercises, counters, time_windows).fillna(0)
-    df = pd.get_dummies(
-        df, columns=["student_id", "exercise_code_level_lesson", "exercise_code"]
-    )
-    return df
+        exercises_to_keep.remove(exercise)
+    return exercises_to_keep
 
 
 def add_counters_for_all_exercises(
