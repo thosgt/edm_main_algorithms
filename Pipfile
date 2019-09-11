@@ -15,6 +15,7 @@ pytest = "<=5.0.1"
 tqdm = "*"
 sklearn = "*"
 numpy = "*"
+matplotlib = "*"
 
 [requires]
 python_version = "3.7"
