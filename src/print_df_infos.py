@@ -11,7 +11,7 @@ def print_cleaned_df_with_information(cleaned_df: pd.DataFrame):
         .rename(columns={"correctness": "traces_count"})["traces_count"]
         .sort_values(ascending=False)
     )
-    print("This is the repartition of traces:")
+    print("This is the repartition of traces grouped by exercise_code :")
     print(trace_repartition.plot(kind="bar"))
 
 
