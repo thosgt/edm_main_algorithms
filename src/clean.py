@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
 
+from src.print_df_infos import print_cleaned_df_with_information
+
 
 def clean_df(
     df,
@@ -9,6 +11,7 @@ def clean_df(
     date_to_timestamp=True,
     exercise_code_level_lesson=True,
     drop_learning_object=True,
+    verbose=True
 ) -> pd.DataFrame:
     df = df.drop(columns=["Unnamed: 0", "id"])
     if exercise_code_level:
@@ -29,6 +32,8 @@ def clean_df(
     df["student_id"] = np.unique(df["student_id"], return_inverse=True)[1]
     df = df[df["correctness"].isin((True, False))]
     df["correctness"] = df["correctness"].astype(int)
+    if verbose:
+        print_cleaned_df_with_information(df)
     return df
 
 
