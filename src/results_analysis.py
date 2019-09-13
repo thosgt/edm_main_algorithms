@@ -22,7 +22,7 @@ def get_exercise_code_betas(coefs: pd.DataFrame):
     return coefs[coefs["columns"].isin(exercise_codes)].sort_values("coefs")
 
 
-def get_one_exercise_gamma(
+def get_gamma_of_exercise(
     coefs: pd.DataFrame, exercise_code: str, level: int, lesson: int
 ):
     return coefs[
@@ -60,7 +60,9 @@ def get_available_exercise_code_level_lesson_tuples(coefs: pd.DataFrame):
 
 def get_exercise_gammas_of_one_exercise_code(coefs: pd.DataFrame, exercise_code: str):
     available_exercise_codes = get_available_exercise_codes(coefs)
-    assert exercise_code in available_exercise_codes
+    if exercise_code not in available_exercise_codes:
+        print('Error : exercise_code not in the dataset')
+        return
     exercise_code_level_lesson_tuples = get_available_exercise_code_level_lesson_tuples(
         coefs
     )
