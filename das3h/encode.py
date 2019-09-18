@@ -26,7 +26,7 @@ def encode_df(
         df, exercises_to_keep, counters, time_windows
     ).fillna(0)
     df = pd.get_dummies(
-        df, columns=["student_id", "exercise_code_level_lesson", "exercise_code"]
+        df, columns=["student_id", "exercise_code_level_lesson", "exercise_code"], sparse=True
     )
     return df
 
