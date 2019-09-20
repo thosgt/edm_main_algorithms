@@ -26,8 +26,8 @@ A central hypothesis of this algorithm is : the hidden state transitions are the
 ### Lower level description - if you are familiar with Machine Learning in general
 
 There are two kind of matrices that we need to distinguish here :
-- the hidden state that is specific to a given student. There is one hidden state per student. In the beginning of their exercise sequence, the hidden state of a student is a matrix with zeros. It is updated after each exercise they answer. Training the model is updating these weights
-- the weights of the network that govern the transition between hidden states, and the mapping between hidden states and predicted probabilities. These weights are the same for all students. There are updated during training so that they fit student transitions the best way possible
+- the hidden state that is specific to a given student. There is one hidden state per student. In the beginning of their exercise sequence, the hidden state of a student is a matrix with zeros. It is updated after each exercise they answer
+- the weights of the network that govern the transition between hidden states, and the mapping between hidden states and predicted probabilities. These weights are the same for all students. There are updated during training so that they fit student transitions the best way possible : training the model is updating these weights
 
 #### What are we going to feed our network to train it ?
 We are going to feed our network the exercise sequence  of each student one after the other (indeed it is a sequence as the exercises are done one after the other and not simultaneously). Therefore, for each student :
