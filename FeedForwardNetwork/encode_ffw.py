@@ -22,6 +22,7 @@ def encode_df(df, skill_counters=True):
             nb_items=nb_items,
             skill_counters=skill_counters,
         )
+        student_features = np.hstack((df_student.values, student_features))
         features = (
             student_features
             if features is None
@@ -81,18 +82,12 @@ if __name__ == "__main__":
         description="Encode feature matrix for feedforward network baseline."
     )
     parser.add_argument("--dataset", type=str)
- 
+
     args = parser.parse_args()
 
     data_path = os.path.join("data", args.dataset)
 
-
     df = pd.read_csv(os.path.join(data_path, "preprocessed_data.csv"), sep="\t")
     X = encode_df(df)
-    sparse.save_npz(
-        os.path.join(
-            data_path, f"X-ffw"
-        ),
-        X,
-    )
+    sparse.save_npz(os.path.join(data_path, f"X-ffw"), X)
 
