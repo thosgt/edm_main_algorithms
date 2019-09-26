@@ -132,4 +132,6 @@ def test_encoding_counter_two_students():
     )
     expected_array = np.concatenate((expected_array_0, expected_array_1), axis=0)
     expected_array = np.log(1 + expected_array)
+
+    expected_array = np.hstack((df_student.sort_values(by="student_id").values, expected_array))
     assert_array_equal(student_ffw_encoding, expected_array)

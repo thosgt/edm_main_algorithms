@@ -16,6 +16,8 @@ tqdm = "*"
 sklearn = "*"
 numpy = "*"
 matplotlib = "*"
+torch = "*"
+tensorboardx = "*"
 
 [requires]
 python_version = "3.7"
