@@ -4,6 +4,7 @@ import numpy as np
 from pandas.testing import assert_frame_equal
 from numpy.testing import assert_array_equal
 from encode_ffw import encode_student_ffw, get_student_counter, encode_df
+from sklearn.preprocessing import OneHotEncoder
 
 
 def test_attempts_counter():
@@ -54,8 +55,11 @@ def test_encoding_counter():
             "correctness": [0, 1, 1, 0, 1, 0, 1],
         }
     )
+    onehot_items = OneHotEncoder(categories=[range(2)])
+    onehot_skills = OneHotEncoder(categories=[range(1)])
+
     student_ffw_encoding = encode_student_ffw(
-        df_student, nb_items=2, nb_skills=1, skill_counters=True
+        df_student, onehot_items=onehot_items, onehot_skills=onehot_skills, skill_counters=True
     )
     expected_attempts_array = np.array(
         [[0, 0, 0], [1, 0, 1], [2, 0, 2], [2, 1, 3], [3, 1, 4], [3, 2, 5], [4, 2, 6]]
@@ -78,8 +82,11 @@ def test_encoding_counter_with_empty_skill():
             "correctness": [0, 1, 1, 0, 1, 0, 1],
         }
     )
+    onehot_items = OneHotEncoder(categories=[range(2)])
+    onehot_skills = OneHotEncoder(categories=[range(2)])
+
     student_ffw_encoding = encode_student_ffw(
-        df_student, nb_items=2, nb_skills=2, skill_counters=True
+        df_student, onehot_items=onehot_items, onehot_skills=onehot_skills, skill_counters=True
     )
     expected_attempts_array = np.array(
         [

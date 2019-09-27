@@ -13,13 +13,16 @@ COUNTERS = ("attempts", "wins")
 def encode_df(df, skill_counters=True):
     nb_skills = len(df["skill_id"].unique())
     nb_items = len(df["item_id"].unique())
+    onehot_items = OneHotEncoder(categories=[range(nb_items)])
+    onehot_skills = OneHotEncoder(categories=[range(nb_skills)])
+
     features = None
     for student_id in df["student_id"].unique():
         df_student = df[df["student_id"] == student_id]
         student_features = encode_student_ffw(
             df_student,
-            nb_skills=nb_skills,
-            nb_items=nb_items,
+            onehot_items=onehot_items,
+            onehot_skills=onehot_skills,
             skill_counters=skill_counters,
         )
         student_features = np.hstack((df_student.values, student_features))
@@ -31,10 +34,7 @@ def encode_df(df, skill_counters=True):
     return sparse.csr_matrix(features)
 
 
-def encode_student_ffw(df_student, nb_items, nb_skills, skill_counters=True):
-    onehot_items = OneHotEncoder(categories=[range(nb_items)])
-    onehot_skills = OneHotEncoder(categories=[range(nb_skills)])
-
+def encode_student_ffw(df_student, onehot_items, onehot_skills, skill_counters=True):
     nb_student_exercises = len(df_student)
 
     labels = df_student["correctness"].values.reshape(-1, 1)
