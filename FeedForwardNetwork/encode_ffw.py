@@ -17,48 +17,48 @@ def encode_df(df, skill_counters=True):
     onehot_skills.fit(df["skill_id"].values.reshape(-1, 1))
 
     features = None
-    for student_id in df["student_id"].unique():
-        df_student = df[df["student_id"] == student_id]
-        student_features = encode_student_ffw(
-            df_student,
+    for user_id in df["user_id"].unique():
+        df_user = df[df["user_id"] == user_id]
+        user_features = encode_user_ffw(
+            df_user,
             onehot_items=onehot_items,
             onehot_skills=onehot_skills,
             skill_counters=skill_counters,
         )
-        student_features = np.hstack((df_student.values, student_features))
+        user_features = np.hstack((df_user.values, user_features))
         features = (
-            student_features
+            user_features
             if features is None
-            else np.vstack((features, student_features))
+            else np.vstack((features, user_features))
         )
     return sparse.csr_matrix(features)
 
 
-def encode_student_ffw(df_student, onehot_items, onehot_skills, skill_counters=True):
-    nb_student_exercises = len(df_student)
+def encode_user_ffw(df_user, onehot_items, onehot_skills, skill_counters=True):
+    nb_user_exercises = len(df_user)
 
-    labels = df_student["correctness"].values.reshape(-1, 1)
-    item_ids = df_student["item_id"].values.reshape(-1, 1)
+    labels = df_user["correct"].values.reshape(-1, 1)
+    item_ids = df_user["item_id"].values.reshape(-1, 1)
     item_ids_onehot = onehot_items.transform(item_ids).toarray()
 
-    skill_ids = df_student["skill_id"].values.reshape(-1, 1)
+    skill_ids = df_user["skill_id"].values.reshape(-1, 1)
     skill_ids_onehot = onehot_skills.transform(skill_ids).toarray()
 
-    all_counters = np.empty((nb_student_exercises, 0))
+    all_counters = np.empty((nb_user_exercises, 0))
     for counter in COUNTERS:
-        student_item_counter = get_student_counter(
+        user_item_counter = get_user_counter(
             item_ids_onehot, labels, counter=counter
         )
-        all_counters = np.hstack((all_counters, student_item_counter))
+        all_counters = np.hstack((all_counters, user_item_counter))
         if skill_counters:
-            student_skill_counter = get_student_counter(
+            user_skill_counter = get_user_counter(
                 skill_ids_onehot, labels, counter=counter
             )
-            all_counters = np.hstack((all_counters, student_skill_counter))
+            all_counters = np.hstack((all_counters, user_skill_counter))
     return all_counters
 
 
-def get_student_counter(feature_id_onehot, labels, counter):
+def get_user_counter(feature_id_onehot, labels, counter):
     array_to_accumulate = np.empty(feature_id_onehot.shape)
     if counter == "attempts":
         array_to_accumulate = feature_id_onehot
