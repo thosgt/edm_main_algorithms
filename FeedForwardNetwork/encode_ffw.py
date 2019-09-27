@@ -11,10 +11,10 @@ COUNTERS = ("attempts", "wins")
 
 
 def encode_df(df, skill_counters=True):
-    nb_skills = len(df["skill_id"].unique())
-    nb_items = len(df["item_id"].unique())
-    onehot_items = OneHotEncoder(categories=[range(nb_items)])
-    onehot_skills = OneHotEncoder(categories=[range(nb_skills)])
+    onehot_items = OneHotEncoder()
+    onehot_items.fit(df["item_id"].values.reshape(-1, 1))
+    onehot_skills = OneHotEncoder()
+    onehot_skills.fit(df["skill_id"].values.reshape(-1, 1))
 
     features = None
     for student_id in df["student_id"].unique():
@@ -39,10 +39,10 @@ def encode_student_ffw(df_student, onehot_items, onehot_skills, skill_counters=T
 
     labels = df_student["correctness"].values.reshape(-1, 1)
     item_ids = df_student["item_id"].values.reshape(-1, 1)
-    item_ids_onehot = onehot_items.fit_transform(item_ids).toarray()
+    item_ids_onehot = onehot_items.transform(item_ids).toarray()
 
     skill_ids = df_student["skill_id"].values.reshape(-1, 1)
-    skill_ids_onehot = onehot_skills.fit_transform(skill_ids).toarray()
+    skill_ids_onehot = onehot_skills.transform(skill_ids).toarray()
 
     all_counters = np.empty((nb_student_exercises, 0))
     for counter in COUNTERS:
