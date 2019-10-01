@@ -23,8 +23,9 @@ def encode_df(df, Q_mat, skill_counters=True):
     Output:
         sparse_df (sparse array): sparse dataset where first 4 columns are the same as in df
     """
-    onehot_items = OneHotEncoder(categories="auto")  # to stop warnings
-    onehot_items.fit(df["item_id"].values.reshape(-1, 1))
+    n_items = Q_mat.shape[0]
+    onehot_items = OneHotEncoder(categories=[range(n_items)])
+    onehot_items.fit_transform(df["item_id"].values.reshape(-1, 1))
 
     features = None
     for user_id in tqdm(df["user_id"].unique()):
@@ -35,7 +36,7 @@ def encode_df(df, Q_mat, skill_counters=True):
             Q_mat=Q_mat,
             skill_counters=skill_counters,
         )
-        user_features = hstack((df_user.values, user_features))
+        user_features = hstack((csr_matrix(df_user.values), user_features))
         features = (
             user_features if features is None else vstack((features, user_features))
         )
