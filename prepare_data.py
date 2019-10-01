@@ -219,7 +219,7 @@ def prepare_lalilo(min_interactions_per_user):
         Q_mat (item-skill relationships sparse array): corresponding q-matrix
     """
     data_path = os.path.join("data", "lalilo")
-    df = pd.read_csv(os.path.join(data_path, "all_traces_from_2018-08-01_to_2019-04-01.csv"))
+    df = pd.read_csv(os.path.join(data_path, "all_traces_from_2018-08-01_to_2019-03-13.csv"))
     def add_exercise_code_level_lesson(df) -> pd.DataFrame:
         dataset = df.copy()
         dataset["exercise_code_level_lesson"] = (
