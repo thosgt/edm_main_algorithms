@@ -27,7 +27,7 @@ def encode_df(df, Q_mat, skill_counters=True):
     onehot_items = OneHotEncoder(categories=[range(n_items)])
     onehot_items.fit_transform(df["item_id"].values.reshape(-1, 1))
 
-    features = None
+    features = []
     for user_id in tqdm(df["user_id"].unique()):
         df_user = df[df["user_id"] == user_id]
         user_features = encode_user_ffw(
@@ -37,10 +37,8 @@ def encode_df(df, Q_mat, skill_counters=True):
             skill_counters=skill_counters,
         )
         user_features = hstack((csr_matrix(df_user.values), user_features))
-        features = (
-            user_features if features is None else vstack((features, user_features))
-        )
-    return features
+        features.append(user_features)
+    return vstack(features)
 
 
 def encode_user_ffw(df_user, Q_mat, onehot_items, skill_counters=True):
@@ -88,7 +86,7 @@ if __name__ == "__main__":
         description="Encode feature matrix for feedforward network baseline."
     )
     parser.add_argument("--dataset", type=str)
-    parser.add_argument("--n_traces", type=int, default=500000)
+    parser.add_argument("--n_traces", type=int, default=20000)
 
     args = parser.parse_args()
 
