@@ -1,0 +1,8 @@
+pandas
+tqdm
+sklearn
+numpy
+matplotlib
+torch
+tensorboardX
+tensorboard
