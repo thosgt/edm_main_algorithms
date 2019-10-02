@@ -42,24 +42,22 @@ def encode_df(df, Q_mat, skill_counters=True):
 
 
 def encode_user_ffw(df_user, Q_mat, onehot_items, skill_counters=True):
-    nb_user_exercises = len(df_user)
-
     labels = csr_matrix(df_user["correct"].values.reshape(-1, 1))
     item_ids = df_user["item_id"].values.reshape(-1, 1)
     item_ids_onehot = onehot_items.transform(item_ids)
 
     skill_ids_onehot = Q_mat[item_ids.flatten()]
 
-    all_counters = csr_matrix((nb_user_exercises, 0))
+    all_counters = []
     for counter in COUNTERS:
         user_item_counter = get_user_counter(item_ids_onehot, labels, counter=counter)
-        all_counters = hstack((all_counters, user_item_counter))
+        all_counters.append(user_item_counter)
         if skill_counters:
             user_skill_counter = get_user_counter(
                 skill_ids_onehot, labels, counter=counter
             )
-            all_counters = hstack((all_counters, user_skill_counter))
-    return all_counters
+            all_counters.append(user_skill_counter)
+    return hstack(all_counters)
 
 
 def get_user_counter(feature_id_onehot, labels, counter):
