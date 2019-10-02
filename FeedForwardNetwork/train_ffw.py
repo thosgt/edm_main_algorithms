@@ -138,7 +138,7 @@ if __name__ == "__main__":
     ).to(device=args.device)
     optimizer = Adam(model.parameters(), lr=args.lr)
 
-    param_str = f"{args.dataset}"
+    param_str = f"dataset={args.dataset}, dropout={args.drop_prob}, hidden_dim={args.hid_size}"
     logger = Logger(os.path.join(args.logdir, param_str))
 
     train(X_train, X_val, model, optimizer, logger, args.num_epochs, args.batch_size)
