@@ -1,4 +1,5 @@
 import random
+import numpy as np
 from random import shuffle
 from sklearn.metrics import roc_auc_score, accuracy_score
 
@@ -38,29 +39,27 @@ def prepare_batches(data, batch_size):
         batches (list of tuples of torch Tensor)
     """
     shuffle(data)
-    batches = []
 
+    batches = []
     for k in range(0, len(data), batch_size):
         batch = data[k:k + batch_size]
         inputs, item_ids, labels = zip(*batch)
 
-        inputs = pad_sequence(inputs, padding_value=0)     # Pad with 0
-        item_ids = pad_sequence(item_ids, padding_value=0) # Don't care
-        labels = pad_sequence(labels, padding_value=-1)    # Pad with -1
+        inputs = pad_sequence(inputs, batch_first=True, padding_value=0)     # Pad with 0
+        item_ids = pad_sequence(item_ids, batch_first=True, padding_value=0) # Don't care
+        labels = pad_sequence(labels, batch_first=True, padding_value=-1)    # Pad with -1
 
         batches.append([inputs, item_ids, labels])
         
     return batches
 
 
-def compute_auc(preds, item_ids, labels):
+def compute_auc(preds, labels):
     labels = labels.view(-1)
-    item_ids = item_ids.view(-1)[labels >= 0]
-    preds = preds.view(-1, preds.shape[-1])[labels >= 0]
-    preds = preds[torch.arange(preds.shape[0]), item_ids]
-    labels = labels[labels >= 0].float()
+    preds = preds.view(-1)[labels >= 0].detach().numpy()
+    labels = labels[labels >= 0].detach().numpy()
 
-    if len(torch.unique(labels)) == 1: # Only one class
+    if len(np.unique(labels)) == 1: # Only one class
         auc = accuracy_score(labels, preds.round())
     else:
         auc = roc_auc_score(labels, preds)

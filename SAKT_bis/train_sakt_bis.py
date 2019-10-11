@@ -8,10 +8,10 @@ from torch.optim import Adam
 
 
 sys.path.append(".")
-from SAKT import SAKT
-from utils.logger import Logger
-from utils.metrics import Metrics
-from utils.misc import *
+from SAKT_bis import SAKT
+from utils_SAKT_bis.logger import Logger
+from utils_SAKT_bis.metrics import Metrics
+from utils_SAKT_bis.misc import *
 from tqdm import tqdm
 
 
@@ -41,10 +41,10 @@ def train(df, model, optimizer, logger, num_epochs, batch_size):
             inputs = inputs.to(device=args.device)
             item_ids = item_ids.to(device=args.device)
             preds = model(inputs, item_ids)
-            loss = criterion(preds, labels.to(device=args.device))
-            loss = compute_loss(preds, item_ids, labels.to(device=args.device), criterion)
+            loss = criterion(preds, labels.to(device=args.device).float())
+            # loss = compute_loss(preds, item_ids, labels.to(device=args.device), criterion)
             #loss = compute_loss(preds, item_ids, labels, criterion)
-            # train_auc = compute_auc(preds.detach().cpu(), item_ids, labels)
+            train_auc = compute_auc(preds, labels)
 
             model.zero_grad()
             loss.backward()
@@ -67,8 +67,8 @@ def train(df, model, optimizer, logger, num_epochs, batch_size):
         for inputs, item_ids, labels in val_batches:
             inputs = inputs.to(device=args.device)
             with torch.no_grad():
-                preds = model(inputs)
-            val_auc = compute_auc(preds.cpu(), item_ids, labels)
+                preds = model(inputs, item_ids)
+            val_auc = compute_auc(preds, labels)
             metrics.store({'auc/val': val_auc})
         model.train()
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
     parser.add_argument('--encode_pos', action='store_true')
     parser.add_argument('--drop_prob', type=float, default=0.5)
     parser.add_argument('--batch_size', type=int, default=10)
-    parser.add_argument('--lr', type=float, default=1e-3)
+    parser.add_argument('--lr', type=float, default=4e-3)
     parser.add_argument('--num_epochs', type=int, default=25)
     parser.add_argument('--n_traces', type=int, default=20000)
     parser.add_argument("--disable-cuda", action="store_true", help="Disable CUDA")
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     df = pd.read_csv(os.path.join('data', args.dataset, 'preprocessed_data.csv'), sep="\t")[-args.n_traces:]
 
     num_items = int(df["item_id"].max() + 1)
-    model = SAKT(num_items, args.embed_inputs, args.embed_size, args.hid_size,
+    model = SAKT(num_items, args.hid_size,
                  args.num_heads, args.encode_pos, args.drop_prob).to(device=args.device)
     optimizer = Adam(model.parameters(), lr=args.lr)
     

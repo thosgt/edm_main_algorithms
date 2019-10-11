@@ -1,9 +1,15 @@
 """ Embeddings module from ONMT"""
 import math
 import warnings
+import numpy as np
 
 import torch
 import torch.nn as nn
+
+
+def future_mask(seq_length):
+    future_mask = np.triu(np.ones((1, seq_length, seq_length)), k=1).astype("bool")
+    return torch.from_numpy(future_mask)
 
 
 class PositionalEncoding(nn.Module):
@@ -32,20 +38,15 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.dim = dim
 
-    def forward(self, emb, step=None):
-        """Embed inputs.
+    def forward(self, emb):
+        """Embed interactions.
         Args:
             emb (FloatTensor): Sequence of word vectors
                 ``(seq_len, batch_size, self.dim)``
-            step (int or NoneType): If stepwise (``seq_len = 1``), use
-                the encoding for this position.
         """
 
         emb = emb * math.sqrt(self.dim)
-        if step is None:
-            emb = emb + self.pe[: emb.size(0)]
-        else:
-            emb = emb + self.pe[step]
+        emb = emb + self.pe[: emb.size(0)]
         emb = self.dropout(emb)
         return emb
 
@@ -61,7 +62,7 @@ class VecEmbedding(nn.Module):
         if self.position_encoding:
             self.pe = PositionalEncoding(dropout, self.embedding_size)
 
-    def forward(self, x, step=None):
+    def forward(self, x):
         """
         Args:
             x (FloatTensor): input, ``(len, batch, 1, vec_feats)``.
@@ -70,7 +71,7 @@ class VecEmbedding(nn.Module):
         """
         x = self.proj(x).squeeze(2)
         if self.position_encoding:
-            x = self.pe(x, step=step)
+            x = self.pe(x)
         return x
 
 
@@ -110,7 +111,22 @@ class MultiHeadedAttention(nn.Module):
            * output context vectors ``(batch, query_len, dim)``
            * one of the attention vectors ``(batch, query_len, key_len)``
         """
-
+        # CHECKS
+        batch, k_len, d = key.size()
+        batch_, k_len_, d_ = value.size()
+        assert batch_ == batch
+        assert k_len == k_len
+        assert d == d_
+        batch_, q_len, d_ = query.size()
+        assert batch_ == batch
+        assert d == d_
+         # aeq(self.model_dim % 8, 0)
+        if mask is not None:
+           batch_, q_len_, k_len_ = mask.size()
+           # assert batch_ == batch mask will be broadcasted
+           assert k_len_== k_len
+           assert q_len_ == q_len
+        # END CHECKS
         batch_size = key.size(0)
         dim_per_head = self.dim_per_head
         head_count = self.head_count
@@ -142,14 +158,14 @@ class MultiHeadedAttention(nn.Module):
 
         # 2) Calculate and scale scores.
         query = query / math.sqrt(dim_per_head)
-        # batch x num_heads x query_len x key_len
+        # batch x heads x query_len x key_len
         query_key = torch.matmul(query, key.transpose(2, 3))
 
         scores = query_key
         scores = scores.float()
 
         if mask is not None:
-            mask = mask.unsqueeze(1)  # [B, 1, 1, T_values]
+            mask = mask.unsqueeze(1)  # [B, 1, 1 (?), T_values]
             scores = scores.masked_fill(mask, -1e18)
 
         # 3) Apply attention dropout and compute context vectors.
@@ -168,6 +184,7 @@ class MultiHeadedAttention(nn.Module):
 
     def update_dropout(self, dropout):
         self.dropout.p = dropout
+
 
 class PositionwiseFeedForward(nn.Module):
     """ A two-layer Feed-Forward-Network with residual layer norm.
@@ -203,6 +220,7 @@ class PositionwiseFeedForward(nn.Module):
         self.dropout_1.p = dropout
         self.dropout_2.p = dropout
 
+
 class TransformerEncoderLayer(nn.Module):
     """
     A single layer of the transformer encoder.
@@ -218,24 +236,22 @@ class TransformerEncoderLayer(nn.Module):
     def __init__(self, d_model, heads, d_ff, dropout, attention_dropout):
         super(TransformerEncoderLayer, self).__init__()
 
-        self.self_attn = MultiHeadedAttention(
-            heads, d_model, dropout=attention_dropout)
+        self.self_attn = MultiHeadedAttention(heads, d_model, dropout=attention_dropout)
         self.feed_forward = PositionwiseFeedForward(d_model, d_ff, dropout)
         self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, inputs_embed, item_embed, mask):
+    def forward(self, interaction_embeds, item_embeds, mask):
         """
         Args:
-            inputs (FloatTensor): ``(batch_size, src_len, model_dim)``
-            mask (LongTensor): ``(batch_size, 1, src_len)``
+            interaction_embeds (FloatTensor): ``(batch_size, src_len, model_dim)``
+            mask (LongTensor): ``(batch_size, 1, src_len)`` pourquoi mask est de cette taille ??
         Returns:
             (FloatTensor):
             * outputs ``(batch_size, src_len, model_dim)``
         """
-        context, _ = self.self_attn(inputs_embed, inputs_embed, item_embed,
-                                    mask=mask)
-        out = self.dropout(context) + item_embed
+        context, _ = self.self_attn(interaction_embeds, interaction_embeds, item_embeds, mask=mask)
+        out = self.dropout(context) + item_embeds
         return self.feed_forward(out)
 
     def update_dropout(self, dropout, attention_dropout):
@@ -244,80 +260,50 @@ class TransformerEncoderLayer(nn.Module):
         self.dropout.p = dropout
 
 
-class TransformerEncoder(nn.Module):
-    """
-    Args:
-        num_layers (int): number of encoder layers
-        d_model (int): size of the model
-        heads (int): number of heads
-        d_ff (int): size of the inner FF layer
-        dropout (float): dropout parameters
-        embeddings (onmt.modules.Embeddings):
-          embeddings to use, should have positional encodings
-    Returns:
-        (torch.FloatTensor, torch.FloatTensor):
-        * embeddings ``(src_len, batch_size, model_dim)``
-        * memory_bank ``(src_len, batch_size, model_dim)``
-    """
-
-    def __init__(self, num_layers, d_model, heads, d_ff, dropout,
-                 attention_dropout):
-        super(TransformerEncoder, self).__init__()
-
-        self.embeddings = embeddings
-        self.transformer = nn.ModuleList(
-            [TransformerEncoderLayer(
-                d_model, heads, d_ff, dropout, attention_dropout)
-             for i in range(num_layers)])
-        self.layer_norm = nn.LayerNorm(d_model, eps=1e-6)
-
-
-    def forward(self, src, lengths=None):
-        """See :func:`EncoderBase.forward()`"""
-        emb = self.embeddings(src)
-
-        out = emb.transpose(0, 1).contiguous()
-        # Run the forward pass of every layer of the tranformer.
-        for layer in self.transformer:
-            out = layer(out, mask)
-        out = self.layer_norm(out)
-
-        return emb, out.transpose(0, 1).contiguous(), lengths
-
-    def update_dropout(self, dropout, attention_dropout):
-        self.embeddings.update_dropout(dropout)
-        for layer in self.transformer:
-            layer.update_dropout(dropout, attention_dropout)
-
-
 class SAKT(nn.Module):
     """Self-attentive knowledge tracing.
     
     Arguments:
             num_items (int): Number of items
-            embed_inputs (bool): If True embed inputs, else one hot encoding
-            embed_size (int): Input embedding dimension
             hid_size (int): Attention dot-product dimension
-            num_heads (int): Number of parallel attention heads
+            heads (int): Number of parallel attention heads
             encode_pos (bool): If True, add positional encoding
-            drop_prob (float): Dropout probability
+            dropout (float): Dropout probability
     """
-    def __init__(self, num_items, embed_inputs, embed_size, hid_size, num_heads, drop_prob):
-        super(SAKT, self).__init__()
-        self.embed_inputs = embed_inputs
-        self.num_items = num_items
-        self.input_embed = nn.Embedding(2 * num_items, embed_size) #maybr padding is needed
-        self.exercise_embedding = nn.Embedding(num_items, embed_size) #maybr padding is needed
-        self.encoder_layer = TransformerEncoderLayer(hid_size, num_heads, hid_size, drop_prob, drop_prob)
-        self.layer_norm = nn.LayerNorm(hid_size, eps=1e-6)
-        self.out = nn.Linear(hid_size, num_items)
-        
-    def forward(self, inputs, item_ids):
-        exercise_embeds = self.exercise_embedding(item_ids)
-        embeds = self.input_embed(inputs)
-        mask = future_mask(inputs.size(0))
-        if inputs.is_cuda:
-            mask = mask.cuda()
 
-        out = self.encoder_layer(embeds, exercise_embeds, mask)
-        return self.out(out)
+    def __init__(
+        self,
+        num_items,
+        hid_size=512,
+        heads=8,
+        dropout=0.2,
+        position_encoding=True,
+    ):
+        super(SAKT, self).__init__()
+        self.num_items = num_items
+        self.interaction_embedding = nn.Embedding(
+            2 * num_items, hid_size
+        )  # maybe padding is needed
+        self.item_embedding = nn.Embedding(
+            num_items, hid_size
+        )  # maybe padding is needed
+        self.position_encoding = position_encoding
+        if self.position_encoding:
+            self.pe = PositionalEncoding(dropout, hid_size)
+        self.encoder_layer = TransformerEncoderLayer(
+            hid_size, heads, hid_size, dropout, dropout
+        )
+        self.layer_norm = nn.LayerNorm(hid_size, eps=1e-6)
+        self.out = nn.Linear(hid_size, 1)
+
+    def forward(self, interactions, items):
+        # intercations and items must be batch first
+        item_embeds = self.item_embedding(items)
+        interaction_embeds = self.interaction_embedding(interactions)
+        mask = future_mask(interactions.size(1))
+        if interactions.is_cuda:
+            mask = mask.cuda()
+        if self.position_encoding:
+            interaction_embeds = self.pe(interaction_embeds)
+        out = self.encoder_layer(interaction_embeds, item_embeds, mask)
+        return torch.sigmoid(self.out(out)).squeeze(2)
