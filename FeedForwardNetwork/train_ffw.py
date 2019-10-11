@@ -1,6 +1,6 @@
 # mainly inspired by Théophile Gervet
 # https://github.com/theophilee/kt-algos/blob/master/train_ffw.py
-
+import sys
 import os
 import argparse
 import numpy as np
@@ -8,6 +8,8 @@ from scipy.sparse import load_npz, csr_matrix
 import torch
 import torch.nn as nn
 from torch.optim import Adam
+
+sys.path.append(".")
 
 from utils.logger import Logger
 from utils.metrics import Metrics
