@@ -56,11 +56,18 @@ def prepare_batches(data, batch_size):
 
 def compute_auc(preds, labels):
     labels = labels.view(-1)
-    preds = preds.view(-1)[labels >= 0].detach().numpy()
-    labels = labels[labels >= 0].detach().numpy()
+    preds = preds.view(-1)[labels >= 0].detach().cpu().numpy()
+    labels = labels[labels >= 0].detach().cpu().numpy()
+
 
     if len(np.unique(labels)) == 1: # Only one class
         auc = accuracy_score(labels, preds.round())
     else:
         auc = roc_auc_score(labels, preds)
     return auc
+
+def compute_loss(preds, labels, criterion):
+    labels = labels.view(-1)
+    preds = preds.view(-1)[labels >= 0]
+    labels = labels[labels >= 0]
+    return criterion(preds, labels)

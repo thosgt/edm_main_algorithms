@@ -8,7 +8,7 @@ import torch.nn as nn
 
 
 def future_mask(seq_length):
-    future_mask = np.triu(np.ones((1, seq_length, seq_length)), k=1).astype("bool")
+    future_mask = np.triu(np.ones((1, seq_length, seq_length)), k=0).astype("bool")
     return torch.from_numpy(future_mask)
 
 
@@ -45,7 +45,7 @@ class PositionalEncoding(nn.Module):
                 ``(seq_len, batch_size, self.dim)``
         """
 
-        emb = emb * math.sqrt(self.dim)
+        # emb = emb * math.sqrt(self.dim)
         emb = emb + self.pe[: emb.size(0)]
         emb = self.dropout(emb)
         return emb
@@ -120,12 +120,13 @@ class MultiHeadedAttention(nn.Module):
         batch_, q_len, d_ = query.size()
         assert batch_ == batch
         assert d == d_
-         # aeq(self.model_dim % 8, 0)
+
+        # aeq(self.model_dim % 8, 0)
         if mask is not None:
-           batch_, q_len_, k_len_ = mask.size()
-           # assert batch_ == batch mask will be broadcasted
-           assert k_len_== k_len
-           assert q_len_ == q_len
+            batch_, q_len_, k_len_ = mask.size()
+            # assert batch_ == batch mask will be broadcasted
+            assert k_len_ == k_len
+            assert q_len_ == q_len
         # END CHECKS
         batch_size = key.size(0)
         dim_per_head = self.dim_per_head
@@ -250,7 +251,9 @@ class TransformerEncoderLayer(nn.Module):
             (FloatTensor):
             * outputs ``(batch_size, src_len, model_dim)``
         """
-        context, _ = self.self_attn(interaction_embeds, interaction_embeds, item_embeds, mask=mask)
+        context, _ = self.self_attn(
+            interaction_embeds, interaction_embeds, item_embeds, mask=mask
+        )
         out = self.dropout(context) + item_embeds
         return self.feed_forward(out)
 
@@ -272,12 +275,7 @@ class SAKT(nn.Module):
     """
 
     def __init__(
-        self,
-        num_items,
-        hid_size=512,
-        heads=8,
-        dropout=0.2,
-        position_encoding=True,
+        self, num_items, hid_size=512, heads=8, dropout=0.2, position_encoding=True
     ):
         super(SAKT, self).__init__()
         self.num_items = num_items
@@ -306,4 +304,4 @@ class SAKT(nn.Module):
         if self.position_encoding:
             interaction_embeds = self.pe(interaction_embeds)
         out = self.encoder_layer(interaction_embeds, item_embeds, mask)
-        return torch.sigmoid(self.out(out)).squeeze(2)
+        return self.out(out).squeeze(2)
