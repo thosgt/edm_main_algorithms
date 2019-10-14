@@ -117,6 +117,7 @@ if __name__ == "__main__":
     model = SAKT(
         num_items, args.hid_size, args.num_heads, args.encode_pos, args.drop_prob
     ).to(device=args.device)
+
     optimizer = Adam(model.parameters(), lr=args.lr)
 
     param_str = (

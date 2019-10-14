@@ -59,6 +59,7 @@ def compute_auc(preds, labels):
     preds = preds.view(-1)[labels >= 0].detach().cpu().numpy()
     labels = labels[labels >= 0].detach().cpu().numpy()
 
+
     if len(np.unique(labels)) == 1: # Only one class
         auc = accuracy_score(labels, preds.round())
     else:

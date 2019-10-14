@@ -120,6 +120,7 @@ class MultiHeadedAttention(nn.Module):
         batch_, q_len, d_ = query.size()
         assert batch_ == batch
         assert d == d_
+
         # aeq(self.model_dim % 8, 0)
         if mask is not None:
             batch_, q_len_, k_len_ = mask.size()
