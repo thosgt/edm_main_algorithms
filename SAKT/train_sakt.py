@@ -8,7 +8,7 @@ from torch.optim import Adam
 
 
 sys.path.append(".")
-from sakt import SAKT
+from model_sakt import SAKT
 from utils_sakt.logger import Logger
 from utils_sakt.metrics import Metrics
 from utils_sakt.misc import *
