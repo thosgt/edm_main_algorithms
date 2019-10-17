@@ -50,31 +50,6 @@ class PositionalEncoding(nn.Module):
         emb = self.dropout(emb)
         return emb
 
-
-class VecEmbedding(nn.Module):
-    def __init__(self, vec_size, emb_dim, position_encoding=False, dropout=0):
-        super(VecEmbedding, self).__init__()
-        self.embedding_size = emb_dim
-        self.proj = nn.Linear(vec_size, emb_dim, bias=False)
-        self.word_padding_idx = 0  # vector seqs are zero-padded
-        self.position_encoding = position_encoding
-
-        if self.position_encoding:
-            self.pe = PositionalEncoding(dropout, self.embedding_size)
-
-    def forward(self, x):
-        """
-        Args:
-            x (FloatTensor): input, ``(len, batch, 1, vec_feats)``.
-        Returns:
-            FloatTensor: embedded vecs ``(len, batch, embedding_size)``.
-        """
-        x = self.proj(x).squeeze(2)
-        if self.position_encoding:
-            x = self.pe(x)
-        return x
-
-
 """ Multi-Head Attention module from ONMT"""
 
 
@@ -302,6 +277,7 @@ class SAKT(nn.Module):
         if interactions.is_cuda:
             mask = mask.cuda()
         if self.position_encoding:
-            interaction_embeds = self.pe(interaction_embeds)
+            interaction_embeds = self.pe(interaction_embeds) # idea do a concatenate instead of just adding the position embeds
+        
         out = self.encoder_layer(interaction_embeds, item_embeds, mask)
         return self.out(out).squeeze(2)
