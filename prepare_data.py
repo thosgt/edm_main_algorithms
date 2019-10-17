@@ -28,8 +28,9 @@ def prepare_assistments(data_name, min_interactions_per_user, remove_nan_skills)
     elif data_name == "assistments12":
         df = df.rename(columns={"problem_id": "item_id"})
         df["timestamp"] = pd.to_datetime(df["start_time"])
-        df["timestamp"] = df["timestamp"].apply(lambda x: x.total_seconds()).astype(np.int64)
         df["timestamp"] = df["timestamp"] - df["timestamp"].min()
+        df["timestamp"] = df["timestamp"].apply(lambda x: x.total_seconds()).astype(np.int64)
+
     elif data_name == "assistments15":
         df = df.rename(columns={"sequence_id": "item_id"})
         df["skill_id"] = df["item_id"]
@@ -110,14 +111,13 @@ def prepare_kddcup10(data_name, min_interactions_per_user, kc_col_name, remove_n
     # Add timestamp
     df["timestamp"] = pd.to_datetime(df["First Transaction Time"])
     df["timestamp"] = df["timestamp"] - df["timestamp"].min()
+    df.dropna(subset=['timestamp'], inplace=True)
     df["timestamp"] = df["timestamp"].apply(lambda x: x.total_seconds()).astype(np.int64)
     df.sort_values(by="timestamp", inplace=True)
 
-    # Filter too short sequences
-    df = df.groupby("user_id").filter(lambda x: len(x) >= min_interactions_per_user)
-
     # Remove continuous outcomes
     df = df[df["correct"].isin([0, 1])]
+    df['correct'] = df['correct'].astype(np.int32)
 
     # Filter nan skills
     if remove_nan_skills:
@@ -127,6 +127,9 @@ def prepare_kddcup10(data_name, min_interactions_per_user, kc_col_name, remove_n
 
     # Drop duplicates
     df.drop_duplicates(subset=["user_id", "item_id", "timestamp"], inplace=True)
+
+    # Filter too short sequences
+    df = df.groupby("user_id").filter(lambda x: len(x) >= min_interactions_per_user)
 
     # Extract KCs
     kc_list = []
@@ -152,6 +155,7 @@ def prepare_kddcup10(data_name, min_interactions_per_user, kc_col_name, remove_n
     # Save data
     sparse.save_npz(os.path.join(data_path, "q_mat.npz"), sparse.csr_matrix(Q_mat))
     df.to_csv(os.path.join(data_path, "preprocessed_data.csv"), sep="\t", index=False)
+
 
 
 def prepare_squirrel_ai(min_interactions_per_user):

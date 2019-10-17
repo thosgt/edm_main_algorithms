@@ -70,6 +70,7 @@ def train(df, model, optimizer, logger, num_epochs, batch_size):
                 }
                 logger.log_histograms(weights, step)
                 logger.log_histograms(grads, step)
+            torch.cuda.empty_cache()
 
         # Validation
         model.eval()
@@ -86,7 +87,7 @@ def train(df, model, optimizer, logger, num_epochs, batch_size):
             metrics.store({"auc/val": val_auc})
             metrics.store({"loss/val": val_loss.item()})
         model.train()
-        torch.cuda.empty_cache()
+
 
 
 if __name__ == "__main__":
@@ -116,7 +117,10 @@ if __name__ == "__main__":
     num_items = int(df["item_id"].max() + 1)
     model = SAKT(
         num_items, args.hid_size, args.num_heads, args.encode_pos, args.drop_prob
-    ).to(device=args.device)
+    )
+    model = nn.DataParallel(model)
+    model.to(device=args.device)
+    print("Let's use", torch.cuda.device_count(), "GPUs!")
 
     optimizer = Adam(model.parameters(), lr=args.lr)
 
