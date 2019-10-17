@@ -60,17 +60,11 @@ def train(df, model, optimizer, logger, num_epochs, batch_size):
             # Logging
             if step % 20 == 0:
                 logger.log_scalars(metrics.average(), step)
-                weights = {
-                    "weight/" + name: param for name, param in model.named_parameters()
-                }
-                grads = {
-                    "grad/" + name: param.grad
-                    for name, param in model.named_parameters()
-                    if param.grad is not None
-                }
-                logger.log_histograms(weights, step)
-                logger.log_histograms(grads, step)
-            torch.cuda.empty_cache()
+                #weights = {"weight/" + name: param for name, param in model.named_parameters()}
+                #grads = {"grad/" + name: param.grad
+                #         for name, param in model.named_parameters() if param.grad is not None}
+                #logger.log_histograms(weights, step)
+                #logger.log_histograms(grads, step)
 
         # Validation
         model.eval()

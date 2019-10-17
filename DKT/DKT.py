@@ -1,27 +1,54 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
+
 
 class DKT(nn.Module):
-    def __init__(self, n_exercise_tuples, hidden_dim):
+    def __init__(self, num_items, num_skills, hid_size, num_hid_layers, drop_prob,
+                 item_in, skill_in, item_out, skill_out):
+        """Deep knowledge tracing.
+        Arguments:
+            num_items (int): number of items
+            num_skills (int): number of skills
+            hid_size (int): hidden layer dimension
+            num_hid_layers (int): number of hidden layers
+            drop_prob (float): dropout probability
+            item_in (bool): if True, use items as inputs
+            skill_in (bool): if True, use skills as inputs
+            item_out (bool): if True, use items as outputs
+            skill_out (bool): if True, use skills as outputs
+        """
         super(DKT, self).__init__()
-        self.hidden_dim = hidden_dim
+        self.num_items = num_items
+        self.num_skills = num_skills
+        self.item_in = item_in
+        self.skill_in = skill_in
+        self.item_out = item_out
+        self.skill_out = skill_out
+        self.input_size = (2 * num_items + 1) * item_in + (2 * num_skills + 1) * skill_in
+        self.output_size = num_items * item_out + num_skills * skill_out
+        
+        self.lstm = nn.LSTM(self.input_size, hid_size, num_hid_layers, batch_first=True)
+        self.dropout = nn.Dropout(p=drop_prob)
+        self.out = nn.Linear(hid_size, self.output_size)
 
-        self.lstm = nn.LSTM(n_exercise_tuples * 2, hidden_dim)
-        # input is 2 * n_tuples because answers are encoded as (exercise, correctness)
+    def forward(self, item_inputs, skill_inputs, hidden=None):
+        # Pad inputs with 0, this explains the +1
+        if (item_inputs is not None) and (skill_inputs is not None):
+            items_onehot = F.one_hot(item_inputs, 2 * self.num_items + 1).float()
+            skills_onehot = F.one_hot(skill_inputs, 2 * self.num_skills + 1).float()
+            input = torch.cat((items_onehot, skills_onehot), -1)
+        elif (item_inputs is not None):
+            input = F.one_hot(item_inputs, 2 * self.num_items + 1).float()
+        elif (skill_inputs is not None):
+            input = F.one_hot(skill_inputs, 2 * self.num_skills + 1).float()
+        else:
+            raise ValueError("Use at least one of skills or items as input")
 
-        self.hidden2prediction = nn.Linear(hidden_dim, n_exercise_tuples)
-        # the linear layer maps from hidden state space to success_rate estimation on exercises
+        output, hidden = self.lstm(input, hx=hidden)
+        return self.out(self.dropout(output)), hidden
 
-        self.sigmoid = nn.Sigmoid()
-
-    def forward(self, sequence_of_answer): 
-        # sequence of answer is of shape (sequence_length, n_exercise_tuples * 2)
-        lstm_out, _ = self.lstm(sequence_of_answer) 
-        # lstm_out is of shape (sequence_length, hidden_dim)
-        predicted_values = self.hidden2prediction(lstm_out) 
-        # predicted_values is of shape (sequence_length, n_exercise_tuples)
-        predicted_probas = self.sigmoid(predicted_values)
-        return predicted_probas
+    def repackage_hidden(self, hidden):
+        # Return detached hidden for TBPTT
+        return tuple((v.detach() for v in hidden))
 
