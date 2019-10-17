@@ -1,71 +1,227 @@
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
+# mainly from theophilee/kt-algos
+import argparse
 import pandas as pd
-import numpy as np
+from random import shuffle
+from sklearn.metrics import roc_auc_score, accuracy_score
 
-from clean import clean_df
-from prepare_sequences import prepare_df, prepare_sequences
-from DKT import DKT
+import torch.nn as nn
+from torch.optim import Adam
+from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
 
-csv_to_use = "shorter_training"
-dataset = pd.read_csv(f"data/lalilo_datasets/{csv_to_use}.csv")[:500]
+from model_dkt import DKT
+from utils import *
 
-cleaned_dataset = clean_df(dataset)
-prepared_dataset, label_encoder = prepare_df(cleaned_dataset)
 
-exercise_sequences = prepare_sequences(prepared_dataset)
+def get_data(df, item_in, skill_in, item_out, skill_out, train_split=0.8):
+    """Extract sequences from dataframe.
+    Arguments:
+        df (pandas Dataframe): output by prepare_data.py
+        item_in (bool): if True, use items as inputs
+        skill_in (bool): if True, use skills as inputs
+        item_out (bool): if True, use items as outputs
+        skill_out (bool): if True, use skills as outputs
+        train_split (float): proportion of data to use for training
+    """
+    item_ids = [torch.tensor(u_df["item_id"].values, dtype=torch.long)
+                for _, u_df in df.groupby("user_id")]
+    skill_ids = [torch.tensor(u_df["skill_id"].values, dtype=torch.long)
+                 for _, u_df in df.groupby("user_id")]
+    labels = [torch.tensor(u_df["correct"].values, dtype=torch.long)
+              for _, u_df in df.groupby("user_id")]
 
-# hyperparameters
-n_epoch = 21
-hidden_dim = 40
-n_exercise_tuples = label_encoder.classes_.shape[0]
+    item_inputs = [torch.cat((torch.zeros(1, dtype=torch.long), i * 2 + l + 1))[:-1]
+                   for (i, l) in zip(item_ids, labels)]
+    skill_inputs = [torch.cat((torch.zeros(1, dtype=torch.long), s * 2 + l + 1))[:-1]
+                    for (s, l) in zip(skill_ids, labels)]
 
-# model, loss_function and optimizer 
-model = DKT(n_exercise_tuples, hidden_dim)
-loss_function = nn.BCELoss()
-optimizer = optim.SGD(model.parameters(), lr=1)
+    item_inputs = item_inputs if item_in else [None] * len(item_inputs)
+    skill_inputs = skill_inputs if skill_in else [None] * len(skill_inputs)
+    item_ids = item_ids if item_out else [None] * len(item_ids)
+    skill_ids = skill_ids if skill_out else [None] * len(skill_ids)
 
-for epoch in range(n_epoch):
-    for exercise_sequence in exercise_sequences:
-        # Step 1. Remember that Pytorch accumulates gradients.
-        # We need to clear them out before each instance
-        model.zero_grad()
+    data = list(zip(item_inputs, skill_inputs, item_ids, skill_ids, labels))
+    shuffle(data)
 
-        # exercise_sequence_columns are "exercise_code_level_lesson", "correctness" 
-        # and columns with the one hot encodings of all (exercise_code_level_lesson, correctness) tuples
-        sequence_length = len(exercise_sequence)
-        exercise_encodings = exercise_sequence["exercise_code_level_lesson"].values
-        correctness = torch.tensor(
-            exercise_sequence["correctness"].values, dtype=torch.float
-        )
-        sequence_alone = (
-            exercise_sequence.drop(
-                columns=["correctness", "exercise_code_level_lesson"]
-            )
-            .shift() # very important to avoid data leakage
-            .fillna(0)
-        )
-        # forward pass
-        predicted_probas = model(
-            torch.tensor(sequence_alone.values.astype(int), dtype=torch.float).view(
-                sequence_length, 1, 2 * n_exercise_tuples
-            )
-        ).squeeze()  # shape (sequence_length, n_exercise_tuples)
+    # Train-test split across users
+    train_size = int(train_split * len(data))
+    train_data, val_data = data[:train_size], data[train_size:]
+    return train_data, val_data
 
-        # selecting the probas for the exercise that were in fact answered
-        predicted_probas_of_answers = predicted_probas[
-            np.arange(sequence_length), exercise_encodings
-        ]  # shape (sequence_length)
 
-        loss = loss_function(predicted_probas_of_answers, correctness)
+def prepare_batches(data, batch_size):
+    """Prepare batches grouping padded sequences.
+    Arguments:
+        data (list of lists of torch Tensor): output by get_data
+        batch_size (int): number of sequences per batch
+    Output:
+        batches (list of lists of torch Tensor)
+    """
+    shuffle(data)
+    batches = []
 
-        # printing loss
-        if epoch % 10 == 1:
-            print(loss)
-            print()
+    for k in range(0, len(data), batch_size):
+        batch = data[k:k + batch_size]
+        seq_lists = list(zip(*batch))
+        inputs_and_ids = [pad_sequence(seqs, batch_first=True, padding_value=0)
+                          if (seqs[0] is not None) else None for seqs in seq_lists[:4]]
+        labels = pad_sequence(seq_lists[-1], batch_first=True, padding_value=-1)  # Pad labels with -1
+        batches.append([*inputs_and_ids, labels])
 
-        # propagating the gradients and updating the weights
-        loss.backward()
-        optimizer.step()
+    return batches
+
+
+def get_preds(preds, item_ids, skill_ids, labels):
+    preds = preds[labels >= 0]
+
+    if (item_ids is not None):
+        item_ids = item_ids[labels >= 0]
+        preds = preds[torch.arange(preds.size(0)), item_ids]
+    elif (skill_ids is not None):
+        skill_ids = skill_ids[labels >= 0]
+        preds = preds[torch.arange(preds.size(0)), skill_ids]
+    else:
+        raise ValueError("Use exactly one of skills or items as output")
+
+    return preds
+
+
+def compute_auc(preds, item_ids, skill_ids, labels):
+    preds = get_preds(preds, item_ids, skill_ids, labels)
+    labels = labels[labels >= 0].float()
+
+    if len(torch.unique(labels)) == 1:  # Only one class
+        auc = accuracy_score(labels, torch.sigmoid(preds).round())
+    else:
+        auc = roc_auc_score(labels, preds)
+
+    return auc
+
+
+def compute_loss(preds, item_ids, skill_ids, labels, criterion):
+    preds = get_preds(preds, item_ids, skill_ids, labels)
+    labels = labels[labels >= 0].float()
+    return criterion(preds, labels)
+
+
+def train(train_data, val_data, model, optimizer, logger, saver, num_epochs, batch_size, bptt=50):
+    """Train DKT model.
+    
+    Arguments:
+        train_data (list of lists of torch Tensor)
+        val_data (list of lists of torch Tensor)
+        model (torch Module)
+        optimizer (torch optimizer)
+        logger: wrapper for TensorboardX logger
+        num_epochs (int): number of epochs to train for
+        batch_size (int)
+        bptt (int): length of truncated backprop through time chunks
+        savepath (str): directory where to save the trained model
+    """
+    criterion = nn.BCEWithLogitsLoss()
+    metrics = Metrics()
+    step = 0
+    
+    for epoch in tqdm(range(num_epochs)):
+        train_batches = prepare_batches(train_data, batch_size)
+        val_batches = prepare_batches(val_data, batch_size)
+
+        # Training
+        for item_inputs, skill_inputs, item_ids, skill_ids, labels in train_batches:
+            length = labels.size(1)
+            preds = torch.empty(labels.size(0), length, model.output_size)
+            if item_inputs is not None:
+                item_inputs.to(device=args.device)
+            if skill_inputs is not None:
+                skill_inputs.to(device=args.device)
+            preds.to(device=args.device)
+
+            # Truncated backprop through time
+            for i in range(0, length, bptt):
+                item_inp = item_inputs[:, i:i + bptt] if item_inputs is not None else None
+                skill_inp = skill_inputs[:, i:i + bptt] if skill_inputs is not None else None
+                if i == 0:
+                    pred, hidden = model(item_inp, skill_inp)
+                else:
+                    hidden = model.repackage_hidden(hidden)
+                    pred, hidden = model(item_inp, skill_inp, hidden)
+                preds[:, i:i + bptt] = pred
+
+            loss = compute_loss(preds, item_ids, skill_ids, labels.to(device=args.device), criterion)
+            train_auc = compute_auc(preds.detach().cpu(), item_ids, skill_ids, labels)
+
+            model.zero_grad()
+            loss.backward()
+            optimizer.step()
+            step += 1
+            metrics.store({'loss/train': loss.item()})
+            metrics.store({'auc/train': train_auc})
+
+            # Logging
+            if step % 20 == 0:
+                logger.log_scalars(metrics.average(), step)
+                #weights = {"weight/" + name: param for name, param in model.named_parameters()}
+                #grads = {"grad/" + name: param.grad
+                #         for name, param in model.named_parameters() if param.grad is not None}
+                #logger.log_histograms(weights, step)
+                #logger.log_histograms(grads, step)
+
+        # Validation
+        model.eval()
+        for item_inputs, skill_inputs, item_ids, skill_ids, labels in val_batches:
+            with torch.no_grad():
+                if item_inputs is not None:
+                    item_inputs.to(device=args.device)
+                if skill_inputs is not None:
+                    skill_inputs.to(device=args.device)
+                preds, _ = model(item_inputs, skill_inputs)
+            val_auc = compute_auc(preds.cpu(), item_ids, skill_ids, labels)
+            metrics.store({'auc/val': val_auc})
+        model.train()
+
+        # Save model
+        average_metrics = metrics.average()
+        logger.log_scalars(average_metrics, step)
+        stop = saver.save(average_metrics['auc/val'], model)
+        if stop:
+            break
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Train DKT.')
+    parser.add_argument('--dataset', type=str)
+    parser.add_argument('--logdir', type=str, default='runs/dkt')
+    parser.add_argument('--savedir', type=str, default='save/dkt')
+    parser.add_argument('--item_in', action='store_true',
+                        help='If True, use items as inputs.')
+    parser.add_argument('--skill_in', action='store_true',
+                        help='If True, use skills as inputs.')
+    parser.add_argument('--item_out', action='store_true',
+                        help='If True, use items as outputs.')
+    parser.add_argument('--skill_out', action='store_true',
+                        help='If True, use skills as outputs.')
+    parser.add_argument('--hid_size', type=int, default=200)
+    parser.add_argument('--num_hid_layers', type=int, default=1)
+    parser.add_argument('--drop_prob', type=float, default=0.5)
+    parser.add_argument('--batch_size', type=int, default=100)
+    parser.add_argument('--lr', type=float, default=1e-2)
+    parser.add_argument('--num_epochs', type=int, default=100)
+    args = parser.parse_args()
+
+    assert (args.item_in or args.skill_in)    # Use at least one of skills or items as input
+    assert (args.item_out != args.skill_out)  # Use exactly one of skills or items as output
+
+    df = pd.read_csv(os.path.join('data', args.dataset, 'preprocessed_data.csv'), sep="\t")
+
+    train_data, val_data = get_data(df, args.item_in, args.skill_in, args.item_out, args.skill_out)
+
+    num_items = int(df["item_id"].max() + 1) + 1
+    num_skills = int(df["skill_id"].max() + 1) + 1
+
+    model = DKT(num_items, num_skills, args.hid_size, args.num_hid_layers, args.drop_prob,
+                args.item_in, args.skill_in, args.item_out, args.skill_out)
+    model = nn.DataParallel(model)
+    model.to(device=args.device)
+    optimizer = Adam(model.parameters(), lr=args.lr)
+
+    logger.close()
