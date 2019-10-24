@@ -100,9 +100,10 @@ if __name__ == "__main__":
     parser.add_argument("--n_traces", type=int, default=20000)
     parser.add_argument("--disable-cuda", action="store_true", help="Disable CUDA")
     args = parser.parse_args()
-    args.device = torch.device("cuda")
-    # else:
-    # args.device = torch.device("cpu")
+    if not args.disable_cuda:
+        args.device = torch.device("cuda")
+    else:
+        args.device = torch.device("cpu")
 
     df = pd.read_csv(
         os.path.join("data", args.dataset, "preprocessed_data.csv"), sep="\t"
