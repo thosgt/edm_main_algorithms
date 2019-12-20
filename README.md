@@ -1,8 +1,10 @@
 This repository contains some of the main EDM models for Knowledge Tracing.
 
-For now it contains DAS3H model by Choffin et al., a basic FeedForwardModel, and DKT
+For now it contains DAS3H model by Choffin et al., a basic FeedForwardModel, DKT and SAKT
 
 ## Setup
+
+Download the datasets you want (Assistments and/or others) and put them in a data folder at the root of this project
 
 Create a new conda environment with python 3
 ```
